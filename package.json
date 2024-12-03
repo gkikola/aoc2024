@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Advent of Code 2024 solutions in JavaScript.",
-  "main": "index.js",
+  "main": "src/run-day.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint src"
+    "start": "src/run-day.js",
+    "lint": "eslint src",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
