@@ -1,6 +1,7 @@
 {
   "name": "aoc2024",
   "version": "1.0.0",
+  "type": "module",
   "description": "Advent of Code 2024 solutions in JavaScript.",
   "main": "index.js",
   "scripts": {
