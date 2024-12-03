@@ -1,0 +1,22 @@
+{
+  "name": "aoc2024",
+  "version": "1.0.0",
+  "description": "Advent of Code 2024 solutions in JavaScript.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gkikola/aoc2024.git"
+  },
+  "keywords": [
+    "advent"
+  ],
+  "author": "Greg Kikola <gkikola@gmail.com> (https://www.gregkikola.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gkikola/aoc2024/issues"
+  },
+  "homepage": "https://github.com/gkikola/aoc2024#readme"
+}
