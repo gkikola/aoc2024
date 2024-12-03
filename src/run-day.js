@@ -5,15 +5,15 @@ import fs from 'node:fs/promises';
 
 async function run(day) {
   const dayString = `day${day < 10 ? '0' : ''}${day}`;
-  const dirname = import.meta.dirname;
+  const { dirname } = import.meta;
   const srcFile = path.resolve(dirname, `${dayString}/index.js`);
   const inputFile = path.resolve(dirname, `${dayString}/input.txt`);
 
   const module = await import(srcFile).catch(() => {
-    throw new Error(`Could not import module '${srcFile}'`);
+    throw new Error(`Could not import module '${srcFile}'.`);
   });
   const input = await fs.readFile(inputFile, 'utf8').catch(() => {
-    throw new Error(`Could not open input file '${inputFile}'`);
+    throw new Error(`Could not open input file '${inputFile}'.`);
   });
 
   return module.default(input);
@@ -24,7 +24,7 @@ async function main(argv) {
     if (argv.length < 3) {
       throw new Error('Expected argument specifying advent day to run.');
     } else if (argv.length > 3) {
-      throw new Error('Received too many arguments');
+      throw new Error('Received too many arguments.');
     }
 
     const day = Number.parseInt(argv[2], 10);
