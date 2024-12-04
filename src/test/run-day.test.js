@@ -21,7 +21,10 @@ async function processDirectory(directory) {
   });
 
   test(`${directory}/index.js produces correct output`, () => {
-    expect(dayModule.default(input)).toBe(output);
+    let result = dayModule.default(input).toString();
+    if (!result.endsWith('\n')) result += '\n';
+
+    expect(result).toBe(output);
   });
 }
 
