@@ -23,31 +23,19 @@ function calculateDistance(sorted1, sorted2) {
   return totalDistance;
 }
 
-function calculateSimilarity(sorted1, sorted2) {
+function calculateSimilarity(list1, list2) {
   let similarity = 0;
+  const counts = new Map();
 
-  /* Since the arrays are sorted, we use minRightIndex to keep track of
-   * the smallest start value in the right-hand list in order to save
-   * some time in the inner loop. */
-  for (let i = 0, minRightIndex = 0; i < sorted1.length; i += 1) {
-    const lvalue = sorted1[i];
+  list2.forEach((value) => {
+    const count = counts.get(value) ?? 0;
+    counts.set(value, count + 1);
+  });
 
-    let count = 0;
-    for (let j = minRightIndex; j < sorted2.length; j += 1) {
-      const rvalue = sorted2[j];
-
-      if (lvalue < rvalue) {
-        // The value is not in the right-hand list
-        break;
-      } else if (lvalue === rvalue) {
-        count += 1;
-      } else {
-        minRightIndex += 1;
-      }
-    }
-
-    similarity += lvalue * count;
-  }
+  list1.forEach((value) => {
+    const count = counts.get(value) ?? 0;
+    similarity += value * count;
+  });
 
   return similarity;
 }
