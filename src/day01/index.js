@@ -15,16 +15,14 @@ function parseInput(input) {
 }
 
 function calculateDistance(sorted1, sorted2) {
-  let totalDistance = 0;
-  for (let i = 0; i < sorted1.length; i += 1) {
-    totalDistance += Math.abs(sorted1[i] - sorted2[i]);
-  }
-
-  return totalDistance;
+  return sorted1.reduce(
+    (distanceSum, leftValue, index) =>
+      distanceSum + Math.abs(leftValue - sorted2[index]),
+    0,
+  );
 }
 
 function calculateSimilarity(list1, list2) {
-  let similarity = 0;
   const counts = new Map();
 
   list2.forEach((value) => {
@@ -32,12 +30,10 @@ function calculateSimilarity(list1, list2) {
     counts.set(value, count + 1);
   });
 
-  list1.forEach((value) => {
+  return list1.reduce((similarity, value) => {
     const count = counts.get(value) ?? 0;
-    similarity += value * count;
-  });
-
-  return similarity;
+    return similarity + value * count;
+  }, 0);
 }
 
 export default function run(input) {
