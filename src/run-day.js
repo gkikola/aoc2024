@@ -30,7 +30,13 @@ async function main(argv) {
     const day = Number.parseInt(argv[2], 10);
     if (Number.isNaN(day)) throw new Error('Expected numeric argument.');
 
-    console.log(await run(day));
+    const result = await run(day);
+
+    if (Array.isArray(result)) {
+      result.forEach((value) => console.log(value));
+    } else {
+      console.log(result);
+    }
   } catch (error) {
     console.error(`${error.name}: ${error.message}`);
     return 1;
