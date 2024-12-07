@@ -12,5 +12,11 @@ module.exports = {
     'no-console': 'off',
     'no-plusplus': 'off',
     'no-restricted-syntax': 'off',
+    'lines-between-class-members': [
+      'error',
+      {
+        enforce: [{ blankLine: 'always', prev: 'method', next: 'method' }],
+      },
+    ],
   },
 };
