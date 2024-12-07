@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "name": "Run Day",
+      "program": "${workspaceFolder}/src/run-day.js",
+      "args": ["${input:dayNumber}"],
+      "request": "launch",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "dayNumber",
+      "type": "promptString",
+      "description": "Enter advent day number to run.",
+      "default": "1"
+    }
+  ]
+}
