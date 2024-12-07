@@ -15,40 +15,26 @@ class PageOrder {
 
   isPairValid(predecessor, successor) {
     const invalidPredecessors = this.#rules.get(successor);
-
     if (!invalidPredecessors) return true;
-
     return !invalidPredecessors.has(predecessor);
-  }
-
-  isPageUpdateValid(pageSequence) {
-    for (let i = 0; i < pageSequence.length - 1; i++) {
-      for (let j = i + 1; j < pageSequence.length; j++) {
-        if (!this.isPairValid(pageSequence[i], pageSequence[j])) return false;
-      }
-    }
-
-    return true;
   }
 
   fixPageUpdate(pageSequence) {
     const correctedSequence = [...pageSequence];
     let sequenceChanged = false;
 
-    for (let i = 0; i < correctedSequence.length - 1; i++) {
-      for (let j = i + 1; j < correctedSequence.length; j++) {
-        if (!this.isPairValid(correctedSequence[i], correctedSequence[j])) {
-          // Shift element j to the current position, and restart outer loop
-          const shiftedValue = correctedSequence[j];
-          for (let k = j; k > i; k--) {
-            correctedSequence[k] = correctedSequence[k - 1];
-          }
-          correctedSequence[i] = shiftedValue;
-          sequenceChanged = true;
-          i--;
-          break;
-        }
-      }
+    correctedSequence.sort((a, b) => {
+      if (a === b) return 0;
+      if (this.isPairValid(a, b)) return -1;
+      return 1;
+    });
+
+    if (
+      correctedSequence.findIndex(
+        (value, index) => pageSequence[index] !== value,
+      ) >= 0
+    ) {
+      sequenceChanged = true;
     }
 
     return { sequenceChanged, correctedSequence };
