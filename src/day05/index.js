@@ -30,6 +30,29 @@ class PageOrder {
 
     return true;
   }
+
+  fixPageUpdate(pageSequence) {
+    const correctedSequence = [...pageSequence];
+    let sequenceChanged = false;
+
+    for (let i = 0; i < correctedSequence.length - 1; i++) {
+      for (let j = i + 1; j < correctedSequence.length; j++) {
+        if (!this.isPairValid(correctedSequence[i], correctedSequence[j])) {
+          // Shift element j to the current position, and restart outer loop
+          const shiftedValue = correctedSequence[j];
+          for (let k = j; k > i; k--) {
+            correctedSequence[k] = correctedSequence[k - 1];
+          }
+          correctedSequence[i] = shiftedValue;
+          sequenceChanged = true;
+          i--;
+          break;
+        }
+      }
+    }
+
+    return { sequenceChanged, correctedSequence };
+  }
 }
 
 function splitAndConvert(line, delimiter) {
@@ -49,16 +72,21 @@ export default function run(input) {
     pageOrder.addRule(...splitAndConvert(rule, '|'));
   });
 
-  const middleSum = updateInput.split('\n').reduce((sum, line) => {
-    if (line.length === 0) return sum;
+  let middleSumCorrect = 0;
+  let middleSumIncorrect = 0;
+  updateInput.split('\n').forEach((line) => {
+    if (line.length === 0) return;
 
     const sequence = splitAndConvert(line, ',');
-    if (pageOrder.isPageUpdateValid(sequence)) {
-      return sum + middleValue(sequence);
+    const result = pageOrder.fixPageUpdate(sequence);
+    if (result.sequenceChanged) {
+      // Update was fixed
+      middleSumIncorrect += middleValue(result.correctedSequence);
+    } else {
+      // Update was already correct
+      middleSumCorrect += middleValue(sequence);
     }
+  });
 
-    return sum;
-  }, 0);
-
-  return middleSum;
+  return [middleSumCorrect, middleSumIncorrect];
 }
