@@ -67,10 +67,58 @@ class WordSearch {
 
     return count;
   }
+
+  #checkXFormation(x, y, word) {
+    const checks = [
+      { offsetX: -1, offsetY: 1, deltaX: 1, deltaY: -1 },
+      { offsetX: -1, offsetY: -1, deltaX: 1, deltaY: 1 },
+    ];
+
+    let count = 0;
+    checks.forEach((check) => {
+      // Check for word forwards or backwards
+      if (
+        this.#checkWord(
+          x + check.offsetX,
+          y + check.offsetY,
+          word,
+          check.deltaX,
+          check.deltaY,
+        ) ||
+        this.#checkWord(
+          x - check.offsetX,
+          y - check.offsetY,
+          word,
+          -check.deltaX,
+          -check.deltaY,
+        )
+      ) {
+        count++;
+      }
+    });
+
+    return count === 2;
+  }
+
+  xFormationCount(word) {
+    if (word.length !== 3) {
+      throw new Error('Word in X-formation must have three characters');
+    }
+
+    let count = 0;
+
+    for (let y = 1; y + 1 < this.#height; y++) {
+      for (let x = 1; x + 1 < this.#width; x++) {
+        if (this.#checkXFormation(x, y, word)) count++;
+      }
+    }
+
+    return count;
+  }
 }
 
 export default function run(input) {
   const wordSearch = new WordSearch(input);
 
-  return wordSearch.wordCount('XMAS');
+  return [wordSearch.wordCount('XMAS'), wordSearch.xFormationCount('MAS')];
 }
