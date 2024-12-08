@@ -1,5 +1,5 @@
+const CELL_EMPTY = '.';
 const CELL_OBSTRUCTION = '#';
-const CELL_VISITED = 'X';
 const CELL_GUARD_UP = '^';
 const CELL_GUARD_DOWN = 'v';
 const CELL_GUARD_LEFT = '<';
@@ -12,6 +12,52 @@ class Lab {
   #guardPosition;
   #guardVelocity;
   #visitedCount;
+  #patrolId;
+
+  constructor(map) {
+    this.#buildMap(map);
+  }
+
+  #coordsToIndex(position) {
+    return position[1] * this.#width + position[0];
+  }
+
+  #indexToCoords(index) {
+    return [index % this.#width, Math.floor(index / this.#width)];
+  }
+
+  #buildMap(mapString) {
+    this.#map = [];
+    this.#width = mapString.indexOf('\n');
+    this.#height = Math.floor(mapString.length / (this.#width + 1));
+    this.#guardPosition = null;
+    this.#guardVelocity = null;
+    this.#patrolId = 0;
+
+    for (const c of mapString) {
+      let type = CELL_EMPTY;
+      let collisionList = null;
+      switch (c) {
+        case CELL_OBSTRUCTION:
+          type = CELL_OBSTRUCTION;
+          collisionList = new Set();
+          break;
+        case CELL_GUARD_UP:
+        case CELL_GUARD_DOWN:
+        case CELL_GUARD_LEFT:
+        case CELL_GUARD_RIGHT:
+          this.#guardPosition = this.#indexToCoords(this.#map.length);
+          this.#setGuardVelocity(c);
+          break;
+        default:
+          break;
+      }
+
+      if (c !== '\n') {
+        this.#map.push({ type, collisionList, patrolId: -1 });
+      }
+    }
+  }
 
   #setGuardVelocity(symbol) {
     switch (symbol) {
@@ -32,88 +78,78 @@ class Lab {
     }
   }
 
-  #locateGuard() {
-    for (let y = 0; y < this.#height; y++) {
-      for (let x = 0; x < this.#width; x++) {
-        switch (this.at(x, y)) {
-          case CELL_GUARD_UP:
-          case CELL_GUARD_DOWN:
-          case CELL_GUARD_LEFT:
-          case CELL_GUARD_RIGHT:
-            return [x, y];
-          default:
-            break;
-        }
-      }
-    }
-
-    return null;
+  static #rotateVelocity(velocity) {
+    if (velocity === null) return null;
+    return [-velocity[1], velocity[0]];
   }
 
-  #rotateGuard() {
-    if (this.#guardVelocity === null) return;
-    this.#guardVelocity = [-this.#guardVelocity[1], this.#guardVelocity[0]];
-  }
-
-  constructor(map) {
-    this.#map = Array.from(map);
-    this.#width = map.indexOf('\n');
-    this.#height = Math.floor(map.length / (this.#width + 1));
-    this.#guardPosition = this.#locateGuard();
-    if (this.#guardPosition !== null) {
-      this.#setGuardVelocity(this.at(...this.#guardPosition));
-    }
-    this.#visitedCount = 0;
-  }
-
-  at(x, y) {
+  #at(position) {
+    const [x, y] = position;
     if (x < 0 || x >= this.#width || y < 0 || y >= this.#height) {
       return null;
     }
 
-    return this.#map[y * (this.#width + 1) + x];
+    return this.#map[this.#coordsToIndex(position)];
   }
 
-  #set(x, y, value) {
-    this.#map[y * (this.#width + 1) + x] = value;
+  #visit(position, patrolId) {
+    this.#map[this.#coordsToIndex(position)].patrolId = patrolId;
+  }
+
+  // Returns true if the same collision happened before
+  #collide(target, source, patrolId) {
+    const index = this.#coordsToIndex(target);
+    let previousCollision = false;
+
+    if (this.#map[index].patrolId !== patrolId) {
+      this.#map[index].collisionList = new Set();
+      this.#map[index].patrolId = patrolId;
+    } else {
+      previousCollision = this.#map[index].collisionList.has(source);
+    }
+    this.#map[index].collisionList.add(source);
+    return previousCollision;
   }
 
   patrol() {
-    while (this.#guardPosition !== null) {
+    let position = this.#guardPosition;
+    let velocity = this.#guardVelocity;
+    let visitedCount = 0;
+    let stuckInLoop = false;
+    this.#patrolId++;
+
+    while (position !== null) {
       // Visit current position
-      if (this.at(...this.#guardPosition) !== CELL_VISITED) {
-        this.#set(...this.#guardPosition, CELL_VISITED);
-        this.#visitedCount++;
+      if (this.#at(position).patrolId !== this.#patrolId) {
+        this.#visit(position, this.#patrolId);
+        visitedCount++;
       }
 
       const nextPosition = [
-        this.#guardPosition[0] + this.#guardVelocity[0],
-        this.#guardPosition[1] + this.#guardVelocity[1],
+        position[0] + velocity[0],
+        position[1] + velocity[1],
       ];
+      const nextCell = this.#at(nextPosition);
 
-      switch (this.at(...nextPosition)) {
-        case null:
-          // Guard has left the area (went out of bounds)
-          this.#guardPosition = null;
-          break;
-        case CELL_OBSTRUCTION:
-          this.#rotateGuard();
-          break;
-        default:
-          this.#guardPosition = nextPosition;
-          break;
+      if (nextCell === null) {
+        // Guard has left the area (went out of bounds)
+        position = null;
+      } else if (nextCell.type === CELL_OBSTRUCTION) {
+        stuckInLoop = this.#collide(nextPosition, position, this.#patrolId);
+        if (stuckInLoop) position = null;
+        else velocity = Lab.#rotateVelocity(velocity);
+      } else {
+        position = nextPosition;
       }
     }
-  }
 
-  get visitedCount() {
-    return this.#visitedCount;
+    return { visitedCount, stuckInLoop };
   }
 }
 
 export default function run(input) {
   const lab = new Lab(input);
-  lab.patrol();
+  const result = lab.patrol();
 
-  return lab.visitedCount;
+  return result.visitedCount;
 }
