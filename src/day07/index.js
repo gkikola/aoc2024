@@ -11,20 +11,18 @@ function calculate(operator, a, b) {
   }
 }
 
-function isEquationValid(result, operands, operators) {
-  if (operands.length === 0) return false;
+function isEquationValid(target, operands, operators, runningTotal = null) {
+  if (operands.length === 0) return runningTotal === target;
+  if (runningTotal !== null && runningTotal > target) return false;
 
-  for (let i = 0; i < operators.length ** (operands.length - 1); i++) {
-    let trialResult = operands[0];
-
-    for (let j = 0; j < operands.length - 1; j++) {
-      const opIndex = Math.floor(i / operators.length ** j) % operators.length;
-      trialResult = calculate(operators[opIndex], trialResult, operands[j + 1]);
-
-      if (trialResult > result) break;
+  for (const op of operators) {
+    const newTotal =
+      runningTotal === null
+        ? operands[0]
+        : calculate(op, runningTotal, operands[0]);
+    if (isEquationValid(target, operands.slice(1), operators, newTotal)) {
+      return true;
     }
-
-    if (trialResult === result) return true;
   }
 
   return false;
@@ -43,10 +41,10 @@ export default function run(input) {
       .split(' ')
       .map((value) => Number.parseInt(value, 10));
 
-    if (isEquationValid(result, operands, ['+', '*'])) {
+    if (isEquationValid(result, operands, ['*', '+'])) {
       simpleCalibrationResult += result;
       finalCalibrationResult += result;
-    } else if (isEquationValid(result, operands, ['||', '+', '*'])) {
+    } else if (isEquationValid(result, operands, ['||', '*', '+'])) {
       finalCalibrationResult += result;
     }
   });
