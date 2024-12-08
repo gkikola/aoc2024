@@ -11,7 +11,6 @@ class Lab {
   #height;
   #guardPosition;
   #guardVelocity;
-  #visitedCount;
   #patrolId;
 
   constructor(map) {
@@ -83,6 +82,12 @@ class Lab {
     return [-velocity[1], velocity[0]];
   }
 
+  static #arePositionsEqual(pos1, pos2) {
+    if (pos1 == null || pos2 == null) return false;
+
+    return pos1[0] === pos2[0] && pos1[1] === pos2[1];
+  }
+
   #at(position) {
     const [x, y] = position;
     if (x < 0 || x >= this.#width || y < 0 || y >= this.#height) {
@@ -98,20 +103,21 @@ class Lab {
 
   // Returns true if the same collision happened before
   #collide(target, source, patrolId) {
-    const index = this.#coordsToIndex(target);
-    let previousCollision = false;
+    const cell = this.#map[this.#coordsToIndex(target)];
+    const sourceIndex = this.#coordsToIndex(source);
 
-    if (this.#map[index].patrolId !== patrolId) {
-      this.#map[index].collisionList = new Set();
-      this.#map[index].patrolId = patrolId;
-    } else {
-      previousCollision = this.#map[index].collisionList.has(source);
+    if (cell.patrolId !== patrolId) {
+      cell.collisionList = new Set();
+      cell.patrolId = patrolId;
+    } else if (cell.collisionList.has(sourceIndex)) {
+      return true;
     }
-    this.#map[index].collisionList.add(source);
-    return previousCollision;
+
+    cell.collisionList.add(sourceIndex);
+    return false;
   }
 
-  patrol() {
+  #patrol(extraObstruction = null) {
     let position = this.#guardPosition;
     let velocity = this.#guardVelocity;
     let visitedCount = 0;
@@ -134,7 +140,10 @@ class Lab {
       if (nextCell === null) {
         // Guard has left the area (went out of bounds)
         position = null;
-      } else if (nextCell.type === CELL_OBSTRUCTION) {
+      } else if (
+        nextCell.type === CELL_OBSTRUCTION ||
+        Lab.#arePositionsEqual(nextPosition, extraObstruction)
+      ) {
         stuckInLoop = this.#collide(nextPosition, position, this.#patrolId);
         if (stuckInLoop) position = null;
         else velocity = Lab.#rotateVelocity(velocity);
@@ -145,11 +154,29 @@ class Lab {
 
     return { visitedCount, stuckInLoop };
   }
+
+  countVisits() {
+    return this.#patrol().visitedCount;
+  }
+
+  countNewObstructionPositions() {
+    // Make sure initial patrol has been done
+    if (this.#patrolId < 0) this.#patrol();
+
+    let count = 0;
+    this.#map.forEach((cell, index) => {
+      const position = this.#indexToCoords(index);
+      if (cell.type !== CELL_EMPTY || cell.patrolId < 0) return;
+      if (Lab.#arePositionsEqual(position, this.#guardPosition)) return;
+
+      if (this.#patrol(position).stuckInLoop) count++;
+    });
+
+    return count;
+  }
 }
 
 export default function run(input) {
   const lab = new Lab(input);
-  const result = lab.patrol();
-
-  return result.visitedCount;
+  return [lab.countVisits(), lab.countNewObstructionPositions()];
 }
