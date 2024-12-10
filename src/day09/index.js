@@ -83,6 +83,9 @@ class Disk {
   defragmentByFile() {
     if (this.#image.length === 0) return;
 
+    // Cache free space search results to cut down on search time
+    const freeSpaceCache = new Map();
+
     let position = this.#image.length - 1;
     while (position > 0) {
       const fileId = this.#image[position];
@@ -90,7 +93,14 @@ class Disk {
         const fileEnd = position;
         position = this.#findFileStart(position);
         const fileLength = fileEnd - position + 1;
-        const destination = this.#findFreeSpace(0, position - 1, fileLength);
+        const searchStart = freeSpaceCache.get(fileLength) ?? 0;
+        const destination = this.#findFreeSpace(
+          searchStart,
+          position - 1,
+          fileLength,
+        );
+
+        freeSpaceCache.set(fileLength, destination + fileLength);
 
         if (destination >= 0) {
           this.#moveBlocks(position, destination, fileLength);
