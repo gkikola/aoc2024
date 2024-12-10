@@ -24,8 +24,8 @@ class Disk {
 
   defragmentByBlock() {
     if (this.#image.length === 0) return;
-    let insertIndex = 0;
-    let moveIndex = this.#image.length - 1;
+    let insertIndex = 0; // Where to insert the file block
+    let moveIndex = this.#image.length - 1; // Where to move the file from
     while (moveIndex > insertIndex) {
       if (this.#image[moveIndex] !== null) {
         while (this.#image[insertIndex] !== null && insertIndex < moveIndex) {
@@ -52,6 +52,7 @@ class Disk {
   defragmentByFile() {
     if (this.#image.length === 0) return;
 
+    // Store list of files and contiguous empty spaces for easy lookup
     const fileMap = new Map();
     const freeSpaceList = [];
 
@@ -81,6 +82,7 @@ class Disk {
 
     if (fileMap.size === 0 || freeSpaceList.length === 0) return;
 
+    // Move each file in reverse order to the first available space
     for (let i = fileMap.size - 1; i >= 0; i--) {
       const fileInfo = fileMap.get(i);
       for (const spaceInfo of freeSpaceList) {
