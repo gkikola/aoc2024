@@ -42,37 +42,6 @@ class Disk {
     }
   }
 
-  #findFileStart(end) {
-    if (this.#image[end] === null) return -1;
-
-    const fileId = this.#image[end];
-    let result = end;
-
-    while (result > 0) {
-      if (this.#image[result - 1] === fileId) result--;
-      else return result;
-    }
-
-    return result;
-  }
-
-  #findFreeSpace(start, end, minSize) {
-    let result = 0;
-    let curSize = 0;
-    for (let i = start; i <= end; i++) {
-      if (this.#image[i] === null) {
-        if (curSize === 0) result = i;
-        curSize++;
-      } else {
-        curSize = 0;
-      }
-
-      if (curSize >= minSize) return result;
-    }
-
-    return -1;
-  }
-
   #moveBlocks(source, dest, length) {
     for (let i = 0; i < length; i++) {
       this.#image[dest + i] = this.#image[source + i];
@@ -83,31 +52,46 @@ class Disk {
   defragmentByFile() {
     if (this.#image.length === 0) return;
 
-    // Cache free space search results to cut down on search time
-    const freeSpaceCache = new Map();
+    const fileMap = new Map();
+    const freeSpaceList = [];
 
-    let position = this.#image.length - 1;
-    while (position > 0) {
-      const fileId = this.#image[position];
-      if (fileId !== null) {
-        const fileEnd = position;
-        position = this.#findFileStart(position);
-        const fileLength = fileEnd - position + 1;
-        const searchStart = freeSpaceCache.get(fileLength) ?? 0;
-        const destination = this.#findFreeSpace(
-          searchStart,
-          position - 1,
-          fileLength,
-        );
+    let curFile = this.#image[0];
+    let blockCount = 1;
+    for (let i = 1; i < this.#image.length; i++) {
+      const fileId = this.#image[i];
 
-        freeSpaceCache.set(fileLength, destination + fileLength);
+      if (fileId === curFile) {
+        blockCount++;
+      } else {
+        const blockInfo = { start: i - blockCount, size: blockCount };
+        if (curFile === null) freeSpaceList.push(blockInfo);
+        else fileMap.set(curFile, blockInfo);
 
-        if (destination >= 0) {
-          this.#moveBlocks(position, destination, fileLength);
+        curFile = fileId;
+        blockCount = 1;
+      }
+    }
+
+    const lastBlockInfo = {
+      start: this.#image.length - blockCount,
+      size: blockCount,
+    };
+    if (curFile === null) freeSpaceList.push(lastBlockInfo);
+    else fileMap.set(curFile, lastBlockInfo);
+
+    if (fileMap.size === 0 || freeSpaceList.length === 0) return;
+
+    for (let i = fileMap.size - 1; i >= 0; i--) {
+      const fileInfo = fileMap.get(i);
+      for (const spaceInfo of freeSpaceList) {
+        if (spaceInfo.start > fileInfo.start) break;
+        if (fileInfo.size <= spaceInfo.size) {
+          this.#moveBlocks(fileInfo.start, spaceInfo.start, fileInfo.size);
+          spaceInfo.start += fileInfo.size;
+          spaceInfo.size -= fileInfo.size;
+          break;
         }
       }
-
-      position--;
     }
   }
 
