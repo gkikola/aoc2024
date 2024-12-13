@@ -1,3 +1,71 @@
+class FenceMap {
+  #width;
+  #height;
+
+  // horiFences and vertFences map columns or rows to sets of fence positions
+  #horiFences;
+  #vertFences;
+
+  constructor(width, height) {
+    this.#width = width;
+    this.#height = height;
+    this.#horiFences = new Map();
+    this.#vertFences = new Map();
+  }
+
+  // Each garden position has two positions for fences (left/right or up/down)
+  static #gridToFenceCoord(coordinate, downOrRight = false) {
+    return coordinate * 2 + (downOrRight ? 1 : 0);
+  }
+
+  insertFence(x, y, vertical = false, downOrRight = false) {
+    const map = vertical ? this.#vertFences : this.#horiFences;
+    const key = FenceMap.#gridToFenceCoord(vertical ? x : y, downOrRight);
+
+    let fenceSet = map.get(key);
+    if (!fenceSet) {
+      fenceSet = new Set();
+      map.set(key, fenceSet);
+    }
+    fenceSet.add(vertical ? y : x);
+  }
+
+  get perimeter() {
+    let result = 0;
+    this.#horiFences.forEach((row) => {
+      result += row.size;
+    });
+    this.#vertFences.forEach((col) => {
+      result += col.size;
+    });
+    return result;
+  }
+
+  #countSides(vertical = false) {
+    const fenceMap = vertical ? this.#vertFences : this.#horiFences;
+    let result = 0;
+    const gridDimension = vertical ? this.#height : this.#width;
+
+    fenceMap.forEach((fenceSet) => {
+      let fenceAtPrevPos = false;
+      for (let i = 0; i < gridDimension; i++) {
+        if (fenceSet.has(i)) {
+          if (!fenceAtPrevPos) result++;
+          fenceAtPrevPos = true;
+        } else {
+          fenceAtPrevPos = false;
+        }
+      }
+    });
+
+    return result;
+  }
+
+  get sides() {
+    return this.#countSides(true) + this.#countSides(false);
+  }
+}
+
 class Garden {
   #width;
   #height;
@@ -26,47 +94,50 @@ class Garden {
     return this.#map[this.#coordsToIndex(x, y)];
   }
 
-  #calculateRegionTotals(x, y, visited) {
+  #calculateRegionArea(x, y, visited, fences) {
     const index = this.#coordsToIndex(x, y);
-    let perimeter = 0;
     let area = 0;
-    if (visited.has(index)) return { perimeter, area };
+    if (visited.has(index)) return 0;
     visited.add(index);
 
     area = 1;
 
     const plant = this.#getPlantAt(x, y);
+
     [
-      [x - 1, y],
-      [x, y - 1],
-      [x, y + 1],
-      [x + 1, y],
-    ].forEach(([neighborX, neighborY]) => {
+      [x - 1, y, true, false],
+      [x, y - 1, false, false],
+      [x, y + 1, false, true],
+      [x + 1, y, true, true],
+    ].forEach(([neighborX, neighborY, vertical, downOrRight]) => {
       if (this.#getPlantAt(neighborX, neighborY) === plant) {
-        const neighborCosts = this.#calculateRegionTotals(
+        const neighborArea = this.#calculateRegionArea(
           neighborX,
           neighborY,
           visited,
+          fences,
         );
 
-        perimeter += neighborCosts.perimeter;
-        area += neighborCosts.area;
+        area += neighborArea;
       } else {
-        perimeter++;
+        fences.insertFence(x, y, vertical, downOrRight);
       }
     });
 
-    return { perimeter, area };
+    return area;
   }
 
-  calculateFenceCosts() {
+  calculateFenceCosts(bulkDiscount = false) {
     const visited = new Set();
     let cost = 0;
 
     this.#map.forEach((plant, index) => {
+      const fenceMap = new FenceMap(this.#width, this.#height);
       const [x, y] = this.#indexToCoords(index);
-      const regionData = this.#calculateRegionTotals(x, y, visited);
-      cost += regionData.perimeter * regionData.area;
+      const area = this.#calculateRegionArea(x, y, visited, fenceMap);
+
+      if (bulkDiscount) cost += fenceMap.sides * area;
+      else cost += fenceMap.perimeter * area;
     });
     return cost;
   }
@@ -74,5 +145,5 @@ class Garden {
 
 export default function run(input) {
   const garden = new Garden(input);
-  return garden.calculateFenceCosts();
+  return [garden.calculateFenceCosts(), garden.calculateFenceCosts(true)];
 }
