@@ -21,7 +21,7 @@ class Garden {
     return x >= 0 && y >= 0 && x < this.#width && y < this.#height;
   }
 
-  #plantAt(x, y) {
+  #getPlantAt(x, y) {
     if (!this.#isPositionInBounds(x, y)) return null;
     return this.#map[this.#coordsToIndex(x, y)];
   }
@@ -35,14 +35,14 @@ class Garden {
 
     area = 1;
 
-    const plant = this.#plantAt(x, y);
+    const plant = this.#getPlantAt(x, y);
     [
       [x - 1, y],
       [x, y - 1],
       [x, y + 1],
       [x + 1, y],
     ].forEach(([neighborX, neighborY]) => {
-      if (this.#plantAt(neighborX, neighborY) === plant) {
+      if (this.#getPlantAt(neighborX, neighborY) === plant) {
         const neighborCosts = this.#calculateRegionTotals(
           neighborX,
           neighborY,
