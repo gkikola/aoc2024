@@ -15,6 +15,10 @@ class RobotSimulator {
     this.#addRobots(robotData);
   }
 
+  #coordsToIndex(x, y) {
+    return y * this.#areaWidth + x;
+  }
+
   #getQuadrant(x, y) {
     const midX = Math.floor(this.#areaWidth / 2);
     const midY = Math.floor(this.#areaHeight / 2);
@@ -73,13 +77,92 @@ class RobotSimulator {
 
     return robotCount.reduce((prod, value) => prod * value);
   }
+
+  #getPosVariance() {
+    const posSum = (robot) => robot.posX + robot.posY;
+    const n = this.#robots.length;
+    const mean =
+      this.#robots.reduce((sum, robot) => sum + posSum(robot), 0) / n;
+    const squaredDevSum = this.#robots
+      .map((robot) => (posSum(robot) - mean) ** 2)
+      .reduce((sum, squaredDev) => sum + squaredDev);
+
+    return squaredDevSum / n;
+  }
+
+  simulateMovement(duration = 1) {
+    for (const robot of this.#robots) {
+      robot.posX = RobotSimulator.#calculateFinalCoordinate(
+        robot.posX,
+        robot.velX,
+        duration,
+        this.#areaWidth,
+      );
+      robot.posY = RobotSimulator.#calculateFinalCoordinate(
+        robot.posY,
+        robot.velY,
+        duration,
+        this.#areaHeight,
+      );
+    }
+  }
+
+  findEasterEgg() {
+    /* The grid will repeat every n steps, where n is the least common
+     * multiple of the width and the height. */
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const lcm = (a, b) => (a * b) / gcd(a, b);
+    const maxDuration = lcm(this.#areaWidth, this.#areaHeight);
+    let minimumVariance = null;
+    let result = 0;
+
+    // Find the second at which there is minimal variance in robot position
+    for (let duration = 0; duration < maxDuration; duration++) {
+      const variance = this.#getPosVariance();
+      if (minimumVariance === null || variance < minimumVariance) {
+        minimumVariance = variance;
+        result = duration;
+      }
+      this.simulateMovement();
+    }
+
+    return result;
+  }
+
+  printRobots() {
+    const grid = [];
+
+    for (let y = 0; y < this.#areaHeight; y++) {
+      for (let x = 0; x < this.#areaWidth; x++) {
+        grid.push(0);
+      }
+    }
+
+    this.#robots.forEach((robot) => {
+      grid[this.#coordsToIndex(robot.posX, robot.posY)]++;
+    });
+
+    let result = '';
+    for (let y = 0; y < this.#areaHeight; y++) {
+      for (let x = 0; x < this.#areaWidth; x++) {
+        const index = this.#coordsToIndex(x, y);
+        result += grid[index] > 0 ? grid[index].toString() : ' ';
+      }
+      if (y + 1 < this.#areaHeight) result += '\n';
+    }
+
+    console.log(result);
+  }
 }
 
 export default function run(input) {
   // The problem input uses a different area size than the example input
-  const areaWidth = input.length > 200 ? AREA_WIDTH : TEST_AREA_WIDTH;
-  const areaHeight = input.length > 200 ? AREA_HEIGHT : TEST_AREA_HEIGHT;
+  const testInput = input.length <= 200;
+  const areaWidth = testInput ? TEST_AREA_WIDTH : AREA_WIDTH;
+  const areaHeight = testInput ? TEST_AREA_HEIGHT : AREA_HEIGHT;
   const simulator = new RobotSimulator(input, areaWidth, areaHeight);
 
-  return simulator.calculateSafetyFactor(100);
+  const safetyFactor = simulator.calculateSafetyFactor(100);
+  const easterEgg = testInput ? 0 : simulator.findEasterEgg();
+  return [safetyFactor, easterEgg];
 }
