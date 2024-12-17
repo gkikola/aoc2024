@@ -1,18 +1,18 @@
+import Heap from '../utility/heap.js';
+
 const DIRECTIONS = [
   [1, 0],
   [0, -1],
   [-1, 0],
   [0, 1],
 ];
-const DIRECTION_RIGHT = 0;
-
+const INITIAL_DIRECTION = 0;
 const MOVEMENT_COST = 1;
 const ROTATION_COST = 1000;
 
 class Maze {
   #cells;
   #width;
-  #height;
   #start;
   #end;
 
@@ -23,7 +23,6 @@ class Maze {
   #buildMap(mapStr) {
     this.#width = mapStr.indexOf('\n');
     this.#cells = [...mapStr].filter((c) => c !== '\n');
-    this.#height = Math.floor(this.#cells.length / this.#width);
 
     this.#start = this.#cells.indexOf('S');
     this.#cells[this.#start] = '.';
@@ -44,45 +43,31 @@ class Maze {
   }
 
   getMinimumScore() {
-    const cellCost = new Map();
-    const cellDirection = new Map();
-    const unvisited = new Set();
-    let curCell = this.#start;
-    let curDirection = DIRECTION_RIGHT;
-    let curCost = 0;
-    cellCost.set(this.#start, curCost);
-    cellDirection.set(this.#start, curDirection);
-
-    this.#cells.forEach((value, index) => {
-      if (value === '.') unvisited.add(index);
+    const cellInfo = [];
+    const unvisited = new Heap((a, b) => {
+      if (cellInfo[a].cost === cellInfo[b].cost) return 0;
+      if (cellInfo[b].cost === null) return -1;
+      if (cellInfo[a].cost === null) return 1;
+      return cellInfo[a].cost - cellInfo[b].cost;
     });
 
-    const setNextCell = () => {
-      // Find unvisited cell with the smallest cost
-      let minCost = null;
-      unvisited.forEach((index) => {
-        const cost = cellCost.get(index);
-        if (cost != null && (minCost === null || cost < minCost)) {
-          minCost = cost;
-          curCost = cost;
-          curCell = index;
-          curDirection = cellDirection.get(index);
-        }
-      });
+    this.#cells.forEach((value, index) => {
+      let cost = null;
+      if (index === this.#start) cost = 0;
+      cellInfo.push({ cost, direction: INITIAL_DIRECTION });
+      if (value === '.') unvisited.push(index);
+    });
 
-      if (minCost === null) curCell = null;
-    };
-
-    const rotate = () => {
-      curDirection = (curDirection + 1) % DIRECTIONS.length;
-    };
+    const rotate = (direction) => (direction + 1) % DIRECTIONS.length;
 
     while (unvisited.size > 0) {
-      setNextCell();
-      if (curCell === null) return null; // All remaining cells are unreachable
-      if (curCell === this.#end) return curCost; // Reached the end
-      unvisited.delete(curCell);
+      const curCell = unvisited.pop();
+      const curCost = cellInfo[curCell].cost;
 
+      if (curCost === null) return null; // All remaining cells are unreachable
+      if (curCell === this.#end) return curCost; // Reached the end
+
+      let curDirection = cellInfo[curCell].direction;
       for (let i = 0; i < DIRECTIONS.length; i++) {
         // Rotating 270 deg is the same as rotating 90 in other direction
         const newCost =
@@ -93,15 +78,14 @@ class Maze {
         const targetY = y + DIRECTIONS[curDirection][1];
         const targetIndex = this.#coordsToIndex(targetX, targetY);
 
-        if (unvisited.has(targetIndex)) {
-          const oldCost = cellCost.get(targetIndex);
-          if (oldCost == null || newCost < oldCost) {
-            cellCost.set(targetIndex, newCost);
-            cellDirection.set(targetIndex, curDirection);
-          }
+        const oldCost = cellInfo[targetIndex].cost;
+        if (oldCost == null || newCost < oldCost) {
+          cellInfo[targetIndex].cost = newCost;
+          cellInfo[targetIndex].direction = curDirection;
+          unvisited.updateValue(targetIndex);
         }
 
-        rotate();
+        curDirection = rotate(curDirection);
       }
     }
 
