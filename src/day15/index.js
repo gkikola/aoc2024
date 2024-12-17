@@ -82,6 +82,8 @@ class Warehouse {
     const targetY = robotY + deltaY;
     const targetCell = this.getCell(targetX, targetY);
 
+    if (!this.#isPositionInBounds(targetX, targetY)) return false;
+
     if (targetCell === '.') {
       this.#robot = this.#coordsToIndex(targetX, targetY);
       return true;
