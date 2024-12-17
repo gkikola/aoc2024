@@ -19,5 +19,6 @@ module.exports = {
         enforce: [{ blankLine: 'always', prev: 'method', next: 'method' }],
       },
     ],
+    'import/extensions': ['error', 'always', { ignorePackages: true }],
   },
 };
