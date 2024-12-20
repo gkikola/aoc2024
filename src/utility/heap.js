@@ -123,6 +123,14 @@ export default class Heap {
     this.#heapifyFrom(0);
   }
 
+  find(predicate) {
+    return this.#heapArr.find((value) => predicate(value));
+  }
+
+  findAll(predicate) {
+    return this.#heapArr.filter((value) => predicate(value));
+  }
+
   replaceValue(value, replacement) {
     if (this.size === 0) return false;
     if (this.size === 1 && this.#heapArr[0] === value) {
