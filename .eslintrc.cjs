@@ -4,6 +4,9 @@ module.exports = {
     node: true,
   },
   extends: ['airbnb-base', 'prettier'],
+  globals: {
+    BigInt: 'readonly',
+  },
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
