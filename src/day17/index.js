@@ -247,6 +247,11 @@ class ValueFinder {
   }
 
   #findValueHelper(startValue = 0n, outputPos = 0) {
+    /* Start by finding a 3-bit value that produces the correct output in the
+     * last position. Then shift it 3 bits to the left and add a new value
+     * until the last two positions are correct. We can continue in this way
+     * until all positions are correct, possibly with a little backtracking. */
+
     /* eslint-disable-next-line no-bitwise */
     const shiftedValue = startValue << 3n;
     const { program } = this.#computer;
