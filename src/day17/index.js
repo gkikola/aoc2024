@@ -1,3 +1,16 @@
+const REGISTER_A = 4;
+const REGISTER_B = 5;
+const REGISTER_C = 6;
+
+const ADV = 0;
+const BXL = 1;
+const BST = 2;
+const JNZ = 3;
+const BXC = 4;
+const OUT = 5;
+const BDV = 6;
+const CDV = 7;
+
 class Computer {
   #program;
   #regA;
@@ -7,9 +20,9 @@ class Computer {
   #output;
 
   constructor(initState = '') {
-    this.setRegister('A', 0);
-    this.setRegister('B', 0);
-    this.setRegister('C', 0);
+    this.setRegister(REGISTER_A, 0);
+    this.setRegister(REGISTER_B, 0);
+    this.setRegister(REGISTER_C, 0);
     this.#instPtr = 0;
     this.#output = [];
 
@@ -39,23 +52,35 @@ class Computer {
     this.#program = program
       .split(',')
       .map((value) => Number.parseInt(value, 10));
+    this.resetProgram();
+  }
+
+  resetProgram() {
     this.#instPtr = 0;
     this.#output = [];
   }
 
+  static isRegister(register) {
+    return register >= REGISTER_A && register <= REGISTER_C;
+  }
+
   setRegister(register, value) {
+    const converted = BigInt(value);
     switch (register) {
+      case REGISTER_A:
       case 'A':
       case 'a':
-        this.#regA = value;
+        this.#regA = converted;
         break;
+      case REGISTER_B:
       case 'B':
       case 'b':
-        this.#regB = value;
+        this.#regB = converted;
         break;
+      case REGISTER_C:
       case 'C':
       case 'c':
-        this.#regC = value;
+        this.#regC = converted;
         break;
       default:
         break;
@@ -64,12 +89,15 @@ class Computer {
 
   readRegister(register) {
     switch (register) {
+      case REGISTER_A:
       case 'A':
       case 'a':
         return this.#regA;
+      case REGISTER_B:
       case 'B':
       case 'b':
         return this.#regB;
+      case REGISTER_C:
       case 'C':
       case 'c':
         return this.#regC;
@@ -79,17 +107,17 @@ class Computer {
   }
 
   #getComboValue(value) {
-    if (value >= 0 && value <= 3) return value;
+    if (value >= 0 && value <= 3) return BigInt(value);
 
     switch (value) {
-      case 4:
+      case REGISTER_A:
         return this.#regA;
-      case 5:
+      case REGISTER_B:
         return this.#regB;
-      case 6:
+      case REGISTER_C:
         return this.#regC;
       default:
-        return 0;
+        return 0n;
     }
   }
 
@@ -101,17 +129,17 @@ class Computer {
 
   #bxl(operand) {
     // eslint-disable-next-line no-bitwise
-    this.#regB ^= operand;
+    this.#regB ^= BigInt(operand);
     return true;
   }
 
   #bst(operand) {
-    this.#regB = this.#getComboValue(operand) % 8;
+    this.#regB = this.#getComboValue(operand) % 8n;
     return true;
   }
 
   #jnz(operand) {
-    if (this.#regA === 0) return true;
+    if (this.#regA === 0n) return true;
 
     this.#instPtr = operand;
     return false;
@@ -124,7 +152,7 @@ class Computer {
   }
 
   #out(operand) {
-    this.#output.push(this.#getComboValue(operand) % 8);
+    this.#output.push(Number(this.#getComboValue(operand) % 8n));
     return true;
   }
 
@@ -141,23 +169,26 @@ class Computer {
   }
 
   runInstruction(opcode, operand) {
-    const operations = [
-      this.#adv,
-      this.#bxl,
-      this.#bst,
-      this.#jnz,
-      this.#bxc,
-      this.#out,
-      this.#bdv,
-      this.#cdv,
-    ].map((op) => op.bind(this));
-
-    const operation =
-      opcode >= 0 && opcode < operations.length
-        ? operations[opcode]
-        : () => true;
-
-    return operation(operand);
+    switch (opcode) {
+      case ADV:
+        return this.#adv(operand);
+      case BXL:
+        return this.#bxl(operand);
+      case BST:
+        return this.#bst(operand);
+      case JNZ:
+        return this.#jnz(operand);
+      case BXC:
+        return this.#bxc(operand);
+      case OUT:
+        return this.#out(operand);
+      case BDV:
+        return this.#bdv(operand);
+      case CDV:
+        return this.#cdv(operand);
+      default:
+        return true;
+    }
   }
 
   run() {
@@ -169,9 +200,82 @@ class Computer {
 
     return this.#output;
   }
+
+  get program() {
+    return this.#program;
+  }
+
+  get output() {
+    return this.#output;
+  }
+
+  toString() {
+    let result = '';
+    result += ['A', 'B', 'C']
+      .map((reg) => `Register ${reg}: ${this.readRegister(reg)}`)
+      .join('\n');
+    result += `\nProgram: ${this.#program.join(',')}\n`;
+    result += `Instruction Pointer: ${this.#instPtr}\n`;
+    result += `Output: "${this.#output.join(',')}"`;
+
+    return result;
+  }
+}
+
+class ValueFinder {
+  #computer;
+
+  constructor(computer) {
+    this.#computer = computer;
+  }
+
+  #testValue(value) {
+    this.#computer.resetProgram();
+    this.#computer.setRegister(REGISTER_A, value);
+    return this.#computer.run();
+  }
+
+  #testResult(result) {
+    const { program } = this.#computer;
+    if (result.length !== program.length) return false;
+
+    for (let i = 0; i < result.length; i++) {
+      if (result[i] !== program[i]) return false;
+    }
+
+    return true;
+  }
+
+  #findValueHelper(startValue = 0n, outputPos = 0) {
+    /* eslint-disable-next-line no-bitwise */
+    const shiftedValue = startValue << 3n;
+    const { program } = this.#computer;
+    const target = program[program.length - outputPos - 1];
+
+    for (let i = 0n; i < 8n; i++) {
+      const trialValue = shiftedValue + i;
+      const result = this.#testValue(trialValue);
+      const posValue = result[result.length - outputPos - 1];
+      if (posValue === target) {
+        if (outputPos >= program.length - 1) {
+          if (this.#testResult(result)) return trialValue;
+        } else {
+          const nestedResult = this.#findValueHelper(trialValue, outputPos + 1);
+          if (nestedResult != null) return nestedResult;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  findInitialValue() {
+    return this.#findValueHelper();
+  }
 }
 
 export default function run(input) {
   const computer = new Computer(input);
-  return computer.run().join(',');
+  const predictor = new ValueFinder(computer);
+  return [computer.run().join(','), predictor.findInitialValue().toString()];
 }
