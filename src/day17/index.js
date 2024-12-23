@@ -281,6 +281,6 @@ class ValueFinder {
 
 export default function run(input) {
   const computer = new Computer(input);
-  const predictor = new ValueFinder(computer);
-  return [computer.run().join(','), predictor.findInitialValue().toString()];
+  const finder = new ValueFinder(computer);
+  return [computer.run().join(','), finder.findInitialValue().toString()];
 }
