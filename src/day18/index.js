@@ -88,6 +88,21 @@ class MemorySpace {
 
     return null;
   }
+
+  findFirstBlockingFall(start = 0) {
+    let min = start;
+    let max = this.#fallingBytes.length;
+
+    while (min < max) {
+      const midpoint = Math.floor((min + max) / 2);
+      const result = this.calculateMinimumSteps(midpoint);
+
+      if (result == null) max = midpoint;
+      else min = midpoint + 1;
+    }
+
+    return this.#indexToCoords(this.#fallingBytes[min - 1]);
+  }
 }
 
 export default function run(input) {
@@ -97,5 +112,9 @@ export default function run(input) {
   const corruptionCount = testInput ? TEST_CORRUPTION_COUNT : CORRUPTION_COUNT;
 
   const memorySpace = new MemorySpace(input, width, height);
-  return memorySpace.calculateMinimumSteps(corruptionCount);
+  const minSteps = memorySpace.calculateMinimumSteps(corruptionCount);
+  return [
+    minSteps,
+    memorySpace.findFirstBlockingFall(corruptionCount).join(','),
+  ];
 }
