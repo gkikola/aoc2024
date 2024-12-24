@@ -8,6 +8,7 @@ const WALL = -1;
 const UNASSIGNED_COST = -2;
 const DESIRED_TIME = 100;
 const TEST_DESIRED_TIME = 50;
+const UPDATED_CHEAT_DURATION = 20;
 
 class Track {
   #positions;
@@ -83,38 +84,41 @@ class Track {
     return x >= 0 && y >= 0 && x < this.#width && y < this.#height;
   }
 
-  #getCheatTimeSave(wallX, wallY) {
-    const getNeighbor = ([deltaX, deltaY]) => [wallX + deltaX, wallY + deltaY];
+  #countCheatsAt(startX, startY, minTimeSave = 0, maxDuration = 2) {
+    const startCost = this.#getCostAt(startX, startY);
+    let count = 0;
 
-    for (let i = 0; i < 2; i++) {
-      const direction = DIRECTIONS[i];
-      const opposite = DIRECTIONS[i + 2];
-      const side1 = getNeighbor(direction);
-      const side2 = getNeighbor(opposite);
+    // Check every tile within maxDuration units of the start tile
+    for (let y = startY - maxDuration; y <= startY + maxDuration; y++) {
+      const vertDuration = Math.abs(y - startY);
+      const remaining = maxDuration - vertDuration;
+      for (let x = startX - remaining; x <= startX + remaining; x++) {
+        if (this.#isInBounds(x, y)) {
+          const posCost = this.#getCostAt(x, y);
+          if (posCost !== WALL && posCost !== UNASSIGNED_COST) {
+            const cheatDuration = vertDuration + Math.abs(x - startX);
+            const timeSavings = posCost - startCost - cheatDuration;
 
-      /* If a wall has free spaces on either side, the time savings from
-       * clipping through the wall will be the difference between the costs of
-       * the two spaces, minus the 2 picoseconds it takes to move through the
-       * wall. */
-      if (this.#isInBounds(...side1) && this.#isInBounds(...side2)) {
-        const cost1 = this.#getCostAt(...side1);
-        const cost2 = this.#getCostAt(...side2);
-        if (cost1 !== WALL && cost2 !== WALL) {
-          return Math.abs(cost1 - cost2) - 2;
+            if (timeSavings >= minTimeSave) count++;
+          }
         }
       }
     }
 
-    return null;
+    return count;
   }
 
-  countCheats(minTimeSave = 0) {
+  countCheats(minTimeSave = 0, maxDuration = 2) {
     return this.#positions.reduce((count, cost, index) => {
-      if (cost !== WALL) return count;
-
-      const timeSave = this.#getCheatTimeSave(...this.#indexToCoords(index));
-      if (timeSave != null && timeSave >= minTimeSave) return count + 1;
-      return count;
+      if (cost === WALL) return count;
+      return (
+        count +
+        this.#countCheatsAt(
+          ...this.#indexToCoords(index),
+          minTimeSave,
+          maxDuration,
+        )
+      );
     }, 0);
   }
 
@@ -143,5 +147,8 @@ export default function run(input) {
   const minTimeSave = testInput ? TEST_DESIRED_TIME : DESIRED_TIME;
 
   const track = new Track(input);
-  return track.countCheats(minTimeSave);
+  return [
+    track.countCheats(minTimeSave),
+    track.countCheats(minTimeSave, UPDATED_CHEAT_DURATION),
+  ];
 }
