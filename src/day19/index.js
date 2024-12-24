@@ -1,44 +1,45 @@
-function parseTowelPatterns(patternLine) {
-  return patternLine.split(', ');
-}
+class DesignCounter {
+  #patterns;
+  #designs;
+  #cache;
 
-function parseDesigns(designList) {
-  return designList.split('\n').filter((design) => design.length > 0);
-}
-
-function testDesign(patternSet, design, cache) {
-  if (design.length === 0) return true;
-  if (cache.has(design)) return cache.get(design);
-
-  for (let i = 1; i <= design.length; i++) {
-    // If the start of the design matches, recursively test the rest of it
-    if (
-      patternSet.has(design.slice(0, i)) &&
-      testDesign(patternSet, design.slice(i), cache)
-    ) {
-      cache.set(design, true);
-      return true;
-    }
+  constructor(towelData) {
+    const [patternLine, designList] = towelData.split('\n\n');
+    this.#patterns = new Set(patternLine.split(', '));
+    this.#designs = designList
+      .split('\n')
+      .filter((design) => design.length > 0);
+    this.#cache = new Map();
   }
 
-  cache.set(design, false);
-  return false;
-}
+  testDesign(design) {
+    if (design.length === 0) return true;
+    if (this.#cache.has(design)) return this.#cache.get(design);
 
-function countPossibleDesigns(patterns, designs) {
-  const patternSet = new Set(patterns);
+    for (let i = 1; i <= design.length; i++) {
+      // If the start of the design matches, recursively test the rest of it
+      if (
+        this.#patterns.has(design.slice(0, i)) &&
+        this.testDesign(design.slice(i))
+      ) {
+        this.#cache.set(design, true);
+        return true;
+      }
+    }
 
-  const cache = new Map();
-  return designs.reduce((count, design) => {
-    if (testDesign(patternSet, design, cache)) return count + 1;
-    return count;
-  }, 0);
+    this.#cache.set(design, false);
+    return false;
+  }
+
+  countPossibleDesigns() {
+    return this.#designs.reduce((count, design) => {
+      if (this.testDesign(design)) return count + 1;
+      return count;
+    }, 0);
+  }
 }
 
 export default function run(input) {
-  const [patternLine, designList] = input.split('\n\n');
-  const patterns = parseTowelPatterns(patternLine);
-  const designs = parseDesigns(designList);
-
-  return countPossibleDesigns(patterns, designs);
+  const counter = new DesignCounter(input);
+  return counter.countPossibleDesigns();
 }
