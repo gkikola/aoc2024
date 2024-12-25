@@ -5,20 +5,14 @@ class Keypad {
   #buttons;
   #labelLookup;
   #width;
-  #height;
 
   constructor(layout) {
     this.#width = layout.indexOf('\n');
-    this.#height = Math.ceil(layout.length / (this.#width + 1));
     this.#buttons = [...layout].filter((label) => label !== '\n');
     this.#labelLookup = new Map();
     this.#buttons.forEach((label, index) => {
       this.#labelLookup.set(label, index);
     });
-  }
-
-  #buttonAt(x, y) {
-    return this.#buttons[y * this.#width + x];
   }
 
   #indexToCoords(index) {
@@ -41,19 +35,19 @@ class Keypad {
         for (; posX > endX; posX--) path.push('<');
       }
 
-      // Down movements are next
+      // Down movements
       if (posY < endY && (gapX !== posX || gapY > endY || gapY < posY)) {
         for (; posY < endY; posY++) path.push('v');
-      }
-
-      // Right movements
-      if (posX < endX && (gapY !== posY || gapX > endX || gapX < posX)) {
-        for (; posX < endX; posX++) path.push('>');
       }
 
       // Up movements
       if (posY > endY && (gapX !== posX || gapY < endY || gapY > posY)) {
         for (; posY > endY; posY--) path.push('^');
+      }
+
+      // Right movements
+      if (posX < endX && (gapY !== posY || gapX > endX || gapX < posX)) {
+        for (; posX < endX; posX++) path.push('>');
       }
     }
 
@@ -72,21 +66,103 @@ class Keypad {
   }
 }
 
-export default function run(input) {
-  const door = new Keypad(DOOR_KEYPAD);
-  const remote1 = new Keypad(REMOTE_KEYPAD);
-  const remote2 = new Keypad(REMOTE_KEYPAD);
+class RobotChain {
+  #doorKeypad;
+  #remoteKeypad;
+  #doorCodes;
 
-  return input
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .reduce(
-      (complexity, code) =>
-        complexity +
-        remote2.getRobotInstructions(
-          remote1.getRobotInstructions(door.getRobotInstructions(code)),
-        ).length *
-          Number.parseInt(code, 10),
+  constructor(doorCodes) {
+    this.#doorKeypad = new Keypad(DOOR_KEYPAD);
+    this.#remoteKeypad = new Keypad(REMOTE_KEYPAD);
+
+    this.#doorCodes = doorCodes.split('\n').filter((line) => line.length > 0);
+  }
+
+  #getCodeComplexity(code, extraRobotCount) {
+    const paths = new Map();
+    const doorInstructions = this.#doorKeypad.getRobotInstructions(code);
+
+    /* The keys in the paths map are each a single motion of the robot arm,
+     * represented as a two-character sequence (e.g. '^>'). With each
+     * iteration, the path between each of these sequences is broken down into
+     * motions and the number of times each motion occurs is stored in the map
+     * or updated. */
+    const updatePaths = (path, multiplier, depth) => {
+      /* Add an 'A' at the beginning since the arm starts every motion from the
+       * A button. */
+      const movement = `A${path}`;
+
+      // Evaluate each pair of buttons in the path
+      for (let i = 0; i + 1 < movement.length; i++) {
+        let key = movement.slice(i, i + 2);
+
+        /* Moving from a key to itself is always the same motion, so no need
+         * to store separate paths for each button. */
+        if (movement[i] === movement[i + 1]) key = 'AA';
+
+        let pathInfo = paths.get(key);
+        if (pathInfo == null) {
+          pathInfo = {
+            // Instructions for the next robot in the chain
+            instructions: `${this.#remoteKeypad.getButtonPath(
+              movement[i],
+              movement[i + 1],
+            )}A`,
+            count: 0, // How many times the button pair occurs at this depth
+            prevCount: 0, // How many times the pair occurred at previous depth
+            depth, // The last depth at which the pair occurred
+          };
+
+          paths.set(key, pathInfo);
+        }
+
+        if (pathInfo.depth < depth) {
+          if (pathInfo.depth === depth - 1) pathInfo.prevCount = pathInfo.count;
+          else pathInfo.prevCount = 0;
+
+          pathInfo.depth = depth;
+          pathInfo.count = 0;
+        }
+        pathInfo.count += multiplier;
+      }
+    };
+
+    // Store the initial button paths resulting from the door code
+    updatePaths(doorInstructions, 1, 0);
+
+    for (let depth = 1; depth <= extraRobotCount; depth++) {
+      // For each button-pair in the map, evaluate the path between the buttons
+      [...paths.values()].forEach((pathInfo) => {
+        let prevCount = 0;
+        if (pathInfo.depth === depth - 1) prevCount = pathInfo.count;
+        else if (pathInfo.depth === depth) prevCount = pathInfo.prevCount;
+        updatePaths(pathInfo.instructions, prevCount, depth);
+      });
+    }
+
+    /* The number of keys in the map determines the number of pairs of buttons
+     * in the sequence, which would be one fewer than the actual sequence
+     * length. However, since there is always one extra key present due to the
+     * initial motion of the robot arm, the length returned is actually correct
+     * as is. */
+    const sequenceLength = [...paths.values()].reduce((length, pathInfo) => {
+      if (pathInfo.depth < extraRobotCount) return length;
+      return length + pathInfo.count;
+    }, 0);
+
+    return Number.parseInt(code, 10) * sequenceLength;
+  }
+
+  getTotalComplexity(extraRobotCount = 2) {
+    return this.#doorCodes.reduce(
+      (sum, code) => sum + this.#getCodeComplexity(code, extraRobotCount),
       0,
     );
+  }
+}
+
+export default function run(input) {
+  const robots = new RobotChain(input);
+
+  return [robots.getTotalComplexity(2), robots.getTotalComplexity(25)];
 }
