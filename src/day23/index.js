@@ -78,9 +78,10 @@ class ConnectionGraph {
   }
 
   getMaximumClique() {
-    /* For each vertex in the network graph, find the maximal clique containing
-     * that vertex. The maximum clique will be the largest of these maximal
-     * cliques. */
+    /* For each vertex in the network graph, find a maximal clique containing
+     * that vertex. Then assume that the maximum clique will be the largest of
+     * these maximal cliques. This method may fail on general graphs, but
+     * appears to work for the problem inputs. */
     return [...this.#connections.values()]
       .reduce((clique, node) => {
         const localMaximalClique = this.#findMaximalCliqueAt(node);
